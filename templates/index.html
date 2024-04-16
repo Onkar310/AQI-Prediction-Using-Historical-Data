@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AQI Prediction of Nashik, Gangapur Road</title>
+    <!-- Bootstrap CSS -->
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    />
+    <!-- Custom CSS -->
+    <style>
+      /* Custom CSS styles */
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f0f0f0;
+        margin: 0;
+        padding: 0;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 50px auto;
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      h3 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .search-form {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      input[type="date"] {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px 0 0 5px;
+        outline: none;
+      }
+
+      button[type="submit"] {
+        padding: 10px 20px;
+        background-color: #007bff;
+        border: none;
+        border-radius: 0 5px 5px 0;
+        color: #fff;
+        cursor: pointer;
+        outline: none;
+      }
+
+      #aqi-graph {
+        width: 100%;
+        height: 400px;
+      }
+
+      #average-aqi {
+        text-align: center;
+        font-size: 24px;
+        margin-bottom: 10px;
+      }
+
+      #health-status {
+        text-align: center;
+        font-size: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>AQI Prediction of Nashik</h1>
+      <h3>Gangapur Road</h3>
+      <form action="/predict" method="post" class="search-form">
+        <input type="date" id="date" name="date" required />
+        <button type="submit">Predict</button>
+      </form>
+      <div id="average-aqi"></div>
+      <div id="health-status"></div>
+      <div id="aqi-graph"></div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+    <script>
+      // Function to fetch predicted AQI values and display them
+      function fetchAndDisplayAqi() {
+        // Get the selected date
+        var selectedDate = document.getElementById("date").value;
+
+        // Send a POST request to the /predict endpoint with the selected date
+        fetch("/predict", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: "date=" + selectedDate,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            // Initialize arrays for hours and AQI values
+            var hours = [];
+            var aqiValues = [];
+
+            // Parse the JSON data and populate arrays
+            data.forEach((entry) => {
+              var hour = entry.date.split(" ")[4].split(":")[0]; // Extract hour from the date string
+              hours.push(hour);
+              aqiValues.push(entry.aqi);
+            });
+
+            // Calculate average AQI
+            var sum = aqiValues.reduce((total, val) => total + val, 0);
+            var averageAqi = sum / aqiValues.length;
+
+            // Determine health status based on AQI
+            var healthStatus;
+            if (averageAqi <= 50) {
+              healthStatus = "Good 😊";
+            } else if (averageAqi <= 100) {
+              healthStatus = "Satisfactory 🙂";
+            } else if (averageAqi <= 200) {
+              healthStatus = "Poor 😞";
+            } else if (averageAqi <= 300) {
+              healthStatus = "Unhealthy 😷";
+            } else if (averageAqi <= 400) {
+              healthStatus = "Hazardous 😨";
+            } else {
+              healthStatus = "Severe Hazardous 😱";
+            }
+
+            // Display average AQI and health status
+            document.getElementById("average-aqi").innerText =
+              "Average AQI: " + Math.round(averageAqi);
+            document.getElementById("health-status").innerText =
+              "Health Status: " + healthStatus;
+
+            // Create trace for the line chart
+            var trace = {
+              x: hours,
+              y: aqiValues,
+              mode: "lines+markers",
+              type: "scatter",
+              marker: { color: "blue" },
+            };
+
+            // Define layout for the chart
+            var layout = {
+              title: "Hourly AQI",
+              xaxis: {
+                title: "Hour",
+              },
+              yaxis: {
+                title: "AQI",
+              },
+            };
+
+            // Plot the chart
+            Plotly.newPlot("aqi-graph", [trace], layout);
+          });
+      }
+
+      // Add event listener to the form for submitting date
+      document
+        .querySelector(".search-form")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+          fetchAndDisplayAqi();
+        });
+    </script>
+  </body>
+</html>
