@@ -115,6 +115,8 @@
         })
           .then((response) => response.json())
           .then((data) => {
+            console.log(data);
+
             // Initialize arrays for hours and AQI values
             var hours = [];
             var aqiValues = [];
@@ -152,13 +154,19 @@
             document.getElementById("health-status").innerText =
               "Health Status: " + healthStatus;
 
-            // Create trace for the line chart
+            // Create trace for the bar chart
             var trace = {
               x: hours,
               y: aqiValues,
-              mode: "lines+markers",
-              type: "scatter",
-              marker: { color: "blue" },
+              type: "bar",
+              text: aqiValues.map((value) => String(value).slice(0, 4)), // Display AQI values permanently
+              textposition: "inside", // Position of the AQI values
+              textfont: {
+                size: 15, // Set the font size of the AQI values
+              },
+              marker: {
+                color: "rgb(0, 0, 255)", // Change the color of the bars (in this example, red)
+              },
             };
 
             // Define layout for the chart
@@ -166,6 +174,8 @@
               title: "Hourly AQI",
               xaxis: {
                 title: "Hour",
+                tickvals: hours, // Specify tick values for the x-axis
+                ticktext: hours, // Specify tick text for the x-axis
               },
               yaxis: {
                 title: "AQI",
