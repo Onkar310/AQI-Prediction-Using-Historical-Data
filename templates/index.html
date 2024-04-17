@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AQI Prediction of Nashik, Gangapur Road</title>
+    <title>AQI Prediction</title>
     <!-- Bootstrap CSS -->
     <link
       rel="stylesheet"
@@ -11,7 +11,6 @@
     />
     <!-- Custom CSS -->
     <style>
-      /* Custom CSS styles */
       body {
         font-family: Arial, sans-serif;
         background-color: #f0f0f0;
@@ -20,22 +19,20 @@
       }
 
       .container {
-        max-width: 800px;
-        margin: 50px auto;
+        max-width: auto;
+        margin: 30px auto;
         background-color: #fff;
         border-radius: 10px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         padding: 20px;
       }
 
-      h1 {
-        text-align: center;
-        margin-bottom: 20px;
-      }
+      h1,
       h3 {
         text-align: center;
         margin-bottom: 20px;
       }
+
       .search-form {
         display: flex;
         justify-content: center;
@@ -61,20 +58,40 @@
         outline: none;
       }
 
-      #aqi-graph {
-        width: 100%;
-        height: 400px;
+      .plot-container {
+        margin-top: 20px;
+      }
+
+      .plot {
+        margin-bottom: 50px;
       }
 
       #average-aqi {
         text-align: center;
-        font-size: 24px;
+        font-size: 48px;
         margin-bottom: 10px;
       }
 
       #health-status {
         text-align: center;
-        font-size: 18px;
+        font-size: 24px;
+      }
+
+      #pollutant-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+
+      #pollutant-table th,
+      #pollutant-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+      }
+
+      #pollutant-table th {
+        background-color: #f2f2f2;
       }
     </style>
   </head>
@@ -86,9 +103,36 @@
         <input type="date" id="date" name="date" required />
         <button type="submit">Predict</button>
       </form>
-      <div id="average-aqi"></div>
-      <div id="health-status"></div>
-      <div id="aqi-graph"></div>
+      <div id="average-aqi">Average AQI: <span id="aqi-value"></span></div>
+      <div id="health-status">
+        Health Status: <span id="status-emoji"></span>
+      </div>
+      <div class="plot-container">
+        <h3>Hourly AQI for Different Pollutants</h3>
+        <div class="plot" id="aqi-graph"></div>
+      </div>
+      <div class="table-container">
+        <h3>Hourly Pollutant Values</h3>
+        <table id="pollutant-table">
+          <thead>
+            <tr>
+              <th>Pollutant</th>
+              <th>10 AM</th>
+              <th>11 AM</th>
+              <th>12 PM</th>
+              <th>1 PM</th>
+              <th>2 PM</th>
+              <th>3 PM</th>
+              <th>4 PM</th>
+              <th>5 PM</th>
+              <th>6 PM</th>
+            </tr>
+          </thead>
+          <tbody id="pollutant-table-body">
+            <!-- Table rows will be dynamically generated here -->
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- Bootstrap JS -->
@@ -117,20 +161,79 @@
           .then((data) => {
             console.log(data);
 
-            // Initialize arrays for hours and AQI values
-            var hours = [];
-            var aqiValues = [];
+            // Initialize array to store trace objects
+            var traces = [];
 
-            // Parse the JSON data and populate arrays
+            // Loop through the data array
             data.forEach((entry) => {
-              var hour = entry.date.split(" ")[4].split(":")[0]; // Extract hour from the date string
-              hours.push(hour);
-              aqiValues.push(entry.aqi);
+              var pollutant = entry[0]; // Get the pollutant name
+              var values = entry.slice(1); // Get the AQI values for the pollutant
+
+              // Create trace for the bar chart
+              var trace = {
+                x: [
+                  "10 AM",
+                  "11 AM",
+                  "12 PM",
+                  "1 PM",
+                  "2 PM",
+                  "3 PM",
+                  "4 PM",
+                  "5 PM",
+                  "6 PM",
+                ],
+                y: values,
+                type: "bar",
+                name: pollutant, // Set the name of the trace to the pollutant name
+                text: values.map((value) => String(value).slice(0, 4)), // Display AQI values permanently
+                textposition: "inside", // Position of the AQI values
+                textfont: {
+                  size: 15, // Set the font size of the AQI values
+                },
+              };
+
+              // Add the trace to the data array for plotting
+              traces.push(trace);
+
+              // Add the values to the table
+              var row = "<tr><td>" + pollutant + "</td>";
+              values.forEach((value) => {
+                if (value < 0) {
+                  row += "<td>" + 0 + "</td>";
+                } else {
+                  row += "<td>" + value.toFixed(2) + "</td>";
+                }
+              });
+              row += "</tr>";
+              document.getElementById("pollutant-table-body").innerHTML += row;
             });
 
+            // Define layout for the chart
+            var layout = {
+              title: "Hourly AQI",
+              xaxis: {
+                title: "Hour",
+              },
+              yaxis: {
+                title: "AQI",
+              },
+            };
+
+            // Plot the chart
+            Plotly.newPlot("aqi-graph", traces, layout);
+
             // Calculate average AQI
-            var sum = aqiValues.reduce((total, val) => total + val, 0);
-            var averageAqi = sum / aqiValues.length;
+            var averageAqi = 0;
+            for (var i = 0; i < data.length; i++) {
+              for (var j = 1; j < data[i].length; j++) {
+                averageAqi += data[i][j];
+              }
+            }
+            averageAqi /= data.length * (data[0].length - 1);
+
+            // Display average AQI
+            document.getElementById("aqi-value").innerText =
+              Math.round(averageAqi);
 
             // Determine health status based on AQI
             var healthStatus;
@@ -148,42 +251,8 @@
               healthStatus = "Severe Hazardous 😱";
             }
 
-            // Display average AQI and health status
-            document.getElementById("average-aqi").innerText =
-              "Average AQI: " + Math.round(averageAqi);
-            document.getElementById("health-status").innerText =
-              "Health Status: " + healthStatus;
-
-            // Create trace for the bar chart
-            var trace = {
-              x: hours,
-              y: aqiValues,
-              type: "bar",
-              text: aqiValues.map((value) => String(value).slice(0, 4)), // Display AQI values permanently
-              textposition: "inside", // Position of the AQI values
-              textfont: {
-                size: 15, // Set the font size of the AQI values
-              },
-              marker: {
-                color: "rgb(0, 0, 255)", // Change the color of the bars (in this example, red)
-              },
-            };
-
-            // Define layout for the chart
-            var layout = {
-              title: "Hourly AQI",
-              xaxis: {
-                title: "Hour",
-                tickvals: hours, // Specify tick values for the x-axis
-                ticktext: hours, // Specify tick text for the x-axis
-              },
-              yaxis: {
-                title: "AQI",
-              },
-            };
-
-            // Plot the chart
-            Plotly.newPlot("aqi-graph", [trace], layout);
+            // Display health status
+            document.getElementById("status-emoji").innerText = healthStatus;
           });
       }
 
